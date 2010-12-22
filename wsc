@@ -2,7 +2,7 @@
 ;; -*- mode: scheme -*-
 
 (define-module white-scheme.compiler
-  (export run-compiler)
+  (export run-compiler))
 (select-module white-scheme.compiler)
 
 ;; more definitions goes here
