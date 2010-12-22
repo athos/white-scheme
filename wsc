@@ -1,0 +1,15 @@
+#!/usr/bin/env gosh
+;; -*- mode: scheme -*-
+
+(define-module white-scheme.compiler
+  (export run-compiler)
+(select-module white-scheme.compiler)
+
+;; more definitions goes here
+
+(define (run-compiler args)
+  0)
+
+(select-module user)
+(import white-scheme.compiler)
+(define main run-compiler)

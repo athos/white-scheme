@@ -1,0 +1,15 @@
+#!/usr/bin/env gosh
+;; -*- mode: scheme -*-
+
+(define-module white-scheme.interpreter
+  (export run-interpreter))
+(select-module white-scheme.interpreter)
+
+;; more definitions goes here
+
+(define (run-interpreter args)
+  0)
+
+(select-module user)
+(import white-scheme.interpreter)
+(define main run-interpreter)

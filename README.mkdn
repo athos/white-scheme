@@ -1,0 +1,21 @@
+white-scheme: An implementation of Scheme-to-Whitespace compiler
+================================================================
+
+FIXME
+
+Prerequisites
+-------------
+
+FIXME
+
+Usage
+-----
+
+FIXME
+
+
+License
+-------
+
+Copyright (C) 2010 OHTA Shogo
+Distributed under the MIT License.
