@@ -2,10 +2,135 @@
 ;; -*- mode: scheme -*-
 
 (define-module white-scheme.interpreter
+  (use util.match)
+  (use srfi-1)
   (export run-interpreter))
 (select-module white-scheme.interpreter)
 
-;; more definitions goes here
+(define (tokenize c)
+  (case c
+    [(#\space) 'S]
+    [(#\tab) 'T]
+    [(#\x0a) 'L]))
+
+(define-syntax define-insn-parsers
+  (syntax-rules ()
+    [(_ def0 def1 ...)
+     (begin
+       (define-insn-parser def0)
+       (define-insn-parser def1)
+       ...)]))
+
+(define-syntax define-insn-parser
+  (syntax-rules (N L)
+    [(_ (name))
+     (define (name code)
+       (values '(name) code))]
+    [(_ (name N))
+     (define (name code)
+       (receive (n code) (parse-number code)
+	 (values `(name ,n) code)))]
+    [(_ (name L))
+     (define (name code)
+       (receive (l code) (parse-label code)
+	 (values `(name ,l) code)))]))
+
+(define-insn-parsers
+  (PUSH N)
+  (COPY N)
+  (SLIDE N)
+  (DUP)
+  (SWAP)
+  (POP)
+  (ADD)
+  (SUB)
+  (MUL)
+  (DIV)
+  (MOD)
+  (STORE)
+  (RETR)
+  (PUTC)
+  (PUTN)
+  (GETC)
+  (GETN)
+  (LABEL L)
+  (CALL L)
+  (JUMP L)
+  (BZERO L)
+  (BNEG L)
+  (RET)
+  (QUIT))
+
+(define *tokens->insn-parser*
+  `((S (S . ,PUSH)
+       (T (S . ,COPY)
+	  (L . ,SLIDE))
+       (L (S . ,DUP)
+	  (T . ,SWAP)
+	  (L . ,POP)))
+    (T (S (S (S . ,ADD)
+	     (T . ,SUB)
+	     (L . ,MUL))
+	  (T (S . ,DIV)
+	     (T . ,MOD)))
+       (T (S . ,STORE)
+	  (T . ,RETR))
+       (L (S (S . ,PUTC)
+	     (T . ,PUTN))
+	  (T (S . ,GETC)
+	     (T . ,GETN))))
+    (L (S (S . ,LABEL)
+	  (T . ,CALL)
+	  (L . ,JUMP))
+       (T (S . ,BZERO)
+	  (T . ,BNEG)
+	  (L . ,RET))
+       (L (L . ,QUIT)))))
+
+;; Parser: tokens -> instructions
+(define (parse code insns)
+  (define (rec code is)
+    (match code
+      [()
+       (if (eq? is insns)
+	 '()
+	 (error "unexpected EOF"))]
+      [(token . code)
+       (if-let1 v (assq token is)
+	 (if (pair? (cdr v))
+	   (rec code (cdr v))
+	   (let1 parser (cdr v)
+	     (receive (insn code) (parser code)
+	       (cons insn (rec code insns)))))
+	 (error "unexpected token" token))]))
+  (rec code insns))
+
+(define (parse-number code)
+  (define (rec code sign n)
+    (match code
+      [('S . code) (rec code sign (* n 2))]
+      [('T . code) (rec code sign (+ (* n 2) 1))]
+      [('L . code) (values (sign n) code)]
+      [() (error "unexpected EOF")]))
+  (let* ([sign (car code)]
+	 [code (cdr code)])
+    (case sign
+      [(S) (rec code identity 0)]
+      [(T) (rec code - 0)]
+      [else (error "unexpected token" sign)])))
+
+(define (parse-label code)
+  (define (rec code ts)
+    (match code
+      [(t . code)
+       (if (or (eq? t 'S) (eq? t 'T))
+	 (rec code (cons t ts))
+	 (values (string->symbol
+		   (string-join (reverse (map symbol->string ts))
+				""))
+		 code))]
+      [() (error "unexpected EOF")]))
+  (rec code '()))
 
 (define (run-interpreter args)
   0)
