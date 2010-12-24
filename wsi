@@ -160,6 +160,62 @@
 	  (error "unknown label"))))
     code))
 
+;; Executor: executes instructions
+(define (execute code heap)
+  (define (step code vstack heap rstack)
+    (define (next vstack)
+      (step (cdr code) vstack heap rstack))
+    (define (arith op)
+      (next (cons (op (cadr vstack) (car vstack)) (cddr vstack))))
+    (match code
+      [() #t]
+      [((comm . args) . code)
+       (case comm
+	 [(PUSH) (next (cons (car args) vstack))]
+	 [(COPY) (next (cons (list-ref vstack (car args)) vstack))]
+	 [(SLIDE) (next (cons (car vstack) (drop vstack (car args))))]
+	 [(DUP) (next (cons (car vstack) vstack))]
+	 [(SWAP) (next (cons* (cadr vstack) (car vstack) (cddr vstack)))]
+	 [(POP) (next (cdr vstack))]
+	 [(ADD)	(arith +)]
+	 [(SUB) (arith -)]
+	 [(MUL) (arith *)]
+	 [(DIV) (arith quotient)]
+	 [(MOD) (arith remainder)]
+	 [(STORE)
+	  (vector-set! heap (cadr vstack) (car vstack))
+	  (next (cddr vstack))]
+	 [(RETR)
+	  (next (cons (vector-ref heap (car vstack)) (cdr vstack)))]
+	 [(PUTC)
+	  (display (integer->char (car vstack)))
+	  (flush)
+	  (next (cdr vstack))]
+	 [(PUTN)
+	  (display (car vstack))
+	  (flush)
+	  (next (cdr vstack))]
+	 [(GETC)
+	  (let1 c (read-char)
+	    (next (cons (char->integer c) vstack)))]
+	 [(GETN)
+	  (let1 n (read)
+	    (next (cons n vstack)))]
+	 [(LABEL) (next vstack)]
+	 [(CALL) (step args vstack heap (cons code rstack))]
+	 [(JUMP L) (step args vstack heap rstack)]
+	 [(BZERO L)
+	  (if (zero? (car vstack))
+	    (step args (cdr vstack) heap rstack)
+	    (next (cdr vstack)))]
+	 [(BNEG L)
+	  (if (negative? (car vstack))
+	    (step args (cdr vstack) heap rstack)
+	    (next (cdr vstack)))]
+	 [(RET) (step (car rstack) vstack heap (cdr rstack))]
+	 [(QUIT) #t])]))
+  (step code '() heap '()))
+
 (define (run-interpreter args)
   0)
 
