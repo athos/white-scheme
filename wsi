@@ -132,6 +132,34 @@
       [() (error "unexpected EOF")]))
   (rec code '()))
 
+;; Assembler: resolves labels
+(define (assemble code)
+  (define (copy-tree t)
+    (if (pair? t)
+      (cons (copy-tree (car t))
+	    (copy-tree (cdr t)))
+      t))
+  (define (scan code insns labels)
+    (match code
+      [() (values insns labels)]
+      [((and (command . args) insn) . code*)
+       (case command
+	 [(LABEL)
+	  (if (assq (car args) labels)
+	    (error "duplicate label")
+	    (scan code* insns (acons (car args) code labels)))]
+	 [(CALL JUMP BZERO BNEG)
+	  (scan code* (cons insn insns) labels)]
+	 [else
+	  (scan code* insns labels)])]))
+  (let1 code (copy-tree code)
+    (receive (insns labels) (scan code '() '())
+      (dolist (insn insns)
+	(if-let1 label (assq (cadr insn) labels)
+	  (set-cdr! insn (cdr label))
+	  (error "unknown label"))))
+    code))
+
 (define (run-interpreter args)
   0)
 
