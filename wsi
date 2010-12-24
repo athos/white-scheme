@@ -4,6 +4,7 @@
 (define-module white-scheme.interpreter
   (use util.match)
   (use srfi-1)
+  (use file.util)
   (export run-interpreter))
 (select-module white-scheme.interpreter)
 
@@ -217,6 +218,10 @@
   (step code '() heap '()))
 
 (define (run-interpreter args)
+  (let1 code (string->list (file->string (cadr args)))
+    (execute (assemble (parse (map tokenize code)
+			      *tokens->insn-parser*))
+	     '#()))
   0)
 
 (select-module user)
